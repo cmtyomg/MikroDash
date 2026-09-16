@@ -101,6 +101,8 @@ func TestTheRouterPurgeTablesMatchLive(t *testing.T) {
 			"and an empty list would make every comparison below pass")
 	}
 
+	// WireGuard history was added after the Node implementation was retired.
+	live = append([]string{"wireguard_sessions", "wireguard_state"}, live...)
 	if !reflect.DeepEqual(routerDataTables, live) {
 		t.Errorf("the purge list differs from the live one:\n  got  %v\n  live %v",
 			routerDataTables, live)
@@ -150,8 +152,18 @@ func purgeDB(t *testing.T) *DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.Exec(alertEventsDDL + purgeDDL); err != nil {
+	if _, err := h.Exec(alertEventsDDL + purgeDDL + wireGuardDDL); err != nil {
 		t.Fatal(err)
+	}
+	for _, rid := range []string{"r1", "r2"} {
+		if _, err := h.Exec(`INSERT INTO wireguard_sessions
+		 (router_id,id,public_key,name,interface,allowed_ip,endpoint,started_at,last_seen_at,rx,tx,end_reason,partial)
+		 VALUES (?,'s1','key','Laptop','wg0','','198.51.100.1',1,1,0,0,'',0)`, rid); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := h.Exec(`INSERT INTO wireguard_state VALUES (?,1,'{}')`, rid); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, table := range []string{"ping_samples", "traffic_samples", "bandwidth_usage",
 		"connectivity_events"} {

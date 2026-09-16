@@ -33,6 +33,8 @@ import (
 // because this has to work in a binary with no live tree beside it. The test is
 // what keeps the two honest.
 var routerDataTables = []string{
+	"wireguard_sessions",
+	"wireguard_state",
 	"ping_samples",
 	"traffic_samples",
 	"bandwidth_usage",

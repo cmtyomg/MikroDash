@@ -208,6 +208,8 @@ type Server struct {
 	// historyWire is built early, because the always-on pool must be given it
 	// BEFORE its first Sync — see New.
 	historyWire *historywire.Wire
+	wgStop      chan struct{}
+	wgDone      chan struct{}
 	// connTick drives the debounce. See historywire.Wire.TickAll.
 	connTick *time.Ticker
 	connStop chan struct{}
@@ -425,6 +427,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 	// something forces a rebuild. Wiring it two hundred lines further down, next
 	// to the session manager's copy, is exactly that bug.
 	srv.historyWire = srv.buildHistoryWire(opts.History)
+	srv.startWireGuardHistory()
 	// ── AND THE IDENTITY WRITER, FOR THE SAME REASON ──────────────────────
 	//
 	// What each router says it is — the model, serial and version Settings →
@@ -655,6 +658,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerCities(mux)
 	s.registerLayouts(mux)
 	s.registerRouterDocs(mux)
+	s.registerWireGuardHistory(mux)
 	s.registerDNSFleet(mux)
 	s.registerTopologyFleet(mux)
 	s.registerAlerts(mux)
@@ -857,6 +861,11 @@ func (s *Server) startConnTicker() {
 }
 
 func (s *Server) Shutdown() {
+	if s.wgStop != nil {
+		close(s.wgStop)
+		<-s.wgDone
+		s.wgStop = nil
+	}
 	// STOPPED FIRST, and this is the sibling of the retention sweep below: a
 	// ticker assigned and never stopped outlives the server, which is harmless
 	// at process exit and a goroutine leak in every test that builds one.

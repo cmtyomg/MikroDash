@@ -161,6 +161,7 @@ func (s *Server) holdOne(r store.Router, warmCovered bool) {
 		reason string
 		want   bool
 	}{
+		{"wireguard", s.auditDB != nil && !r.Disabled},
 		{"alerts", r.AlertsEnabled && !r.Disabled},
 		// PER-ROUTER RECORDING. `store.ReportingOn` is the one reader of that
 		// setting; asking the flag directly is how a router whose reporting was

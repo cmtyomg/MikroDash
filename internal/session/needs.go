@@ -37,6 +37,7 @@ import (
 // Reasons is why a session is being kept alive. A viewer is one reason; the
 // named holds are the others.
 type Reasons struct {
+	WireGuard bool
 	// Viewer is true while at least one browser has this router selected. It
 	// wants everything, because it can navigate to any page.
 	Viewer bool
@@ -89,6 +90,9 @@ var devicesFeeds = []string{"system", "ifStatus", "traffic", "ping", "dhcpLeases
 // and nothing else. That is the whole saving: an alerting router runs six
 // collectors instead of fifteen.
 func Needs(key string, why Reasons) bool {
+	if why.WireGuard && key == "vpn" {
+		return true
+	}
 	if why.Viewer {
 		return true
 	}
@@ -121,11 +125,12 @@ func Needs(key string, why Reasons) bool {
 // reasons reads the session's current holders. The caller holds s.mu.
 func (s *Session) reasonsLocked() Reasons {
 	return Reasons{
-		Viewer:  s.refs > 0,
-		Alerts:  s.holds["alerts"],
-		History: s.holds["history"],
-		Devices: s.holds["devices"],
-		Warm:    s.holds["warm"],
+		WireGuard: s.holds["wireguard"],
+		Viewer:    s.refs > 0,
+		Alerts:    s.holds["alerts"],
+		History:   s.holds["history"],
+		Devices:   s.holds["devices"],
+		Warm:      s.holds["warm"],
 	}
 }
 

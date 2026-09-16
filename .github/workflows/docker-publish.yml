@@ -11,7 +11,7 @@ on:
 env:
   REGISTRY: ghcr.io
   # Must be lowercase — Docker registry names are case-sensitive
-  IMAGE_NAME: secops-7/mikrodash
+  IMAGE_NAME: cmtyomg/mikrodash
 
 jobs:
   build-and-push:
@@ -48,10 +48,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Only version tags produce published images: v0.5.21 pushes :0.5.21,
-      # :0.5 and :latest. A push to main builds but publishes nothing, so
-      # :latest always points at the newest release rather than at whatever was
-      # merged most recently.
+      # Main publishes latest and a commit tag so this fork can be installed
+      # directly from GHCR. Version tags additionally publish semver aliases.
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
@@ -60,29 +58,21 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
 
-      # Main pushes still build every architecture, they just do not publish.
-      # The old reason was that better-sqlite3 compiled natively per arch, so an
-      # arm64 break was a real possibility; modernc.org/sqlite is pure Go and
-      # there is no native compilation left. What can still break per-arch is the
-      # geodata stage's download and the QEMU emulation itself, so building all
-      # three on main remains worth the minutes.
+      # One image supports ordinary servers, ARM64 and ARMv7 devices.
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Layer cache stored in the registry so repeat builds are fast.
-          # Reading is always safe; writing is restricted to tag builds so a
-          # validation run never writes to the registry. Two concurrent writers
-          # of the same layers is what tripped GHCR's secondary rate limit and
-          # blocked the v0.5.54 publish.
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: ${{ startsWith(github.ref, 'refs/tags/v') && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, env.IMAGE_NAME) || '' }}
+          # Build cache stays in Actions; only application images are in GHCR.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # Create a GitHub Release on version tags, using the matching CHANGELOG section
   # as the release body. Only runs after the Docker image is successfully published.

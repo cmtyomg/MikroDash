@@ -11,6 +11,7 @@
 import { esc, el, resRow, fmtMbps, fmtBytes } from '../dom';
 import type { Socket } from '../socket';
 import { mountAdds, mountRows } from '../resource';
+import { initVpnSessions } from './vpn-sessions';
 
 /**
  * A RouterOS last-handshake duration in seconds.
@@ -62,7 +63,8 @@ function hsBadge(uptime: string, connected: boolean): string {
   return '<span class="vpn-hs-badge ' + cls + '">● ' + esc(uptime) + '</span>';
 }
 
-export function initVpnPage(socket: Socket, isVisible: (page: string) => boolean): void {
+export function initVpnPage(socket: Socket, isVisible: (page: string) => boolean, routerId: () => string = () => ''): void {
+  initVpnSessions(socket, isVisible, routerId);
   socket.on('vpn:update', (d) => {
     const all = d.tunnels || [];
     const wg = all.filter((t) => t.type === 'WireGuard');

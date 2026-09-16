@@ -830,6 +830,10 @@ func TestRemovingARouterPurgesWhatOnlyMadeSenseWithIt(t *testing.T) {
 	// Seed the three things, for BOTH routers, so "r2 kept its rows" is a real
 	// assertion rather than a vacuous one.
 	seedPurgeables(t, s)
+	// Production startup migrates existing databases before serving requests.
+	if _, err := s.auditDB.Migrate(); err != nil {
+		t.Fatal(err)
+	}
 
 	for _, rid := range []string{"r1", "r2"} {
 		if countRows(t, s, "grants", "scope_id", rid) == 0 ||

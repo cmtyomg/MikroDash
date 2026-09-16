@@ -48,6 +48,12 @@ MikroDash connects directly to the RouterOS API over a persistent binary TCP con
 ### VPN / WireGuard
 ![VPN](screenshots/vpn.png)
 
+WireGuard now includes [session history](docs/wireguard-sessions.md): filter by
+peer to see observed source IPs, approximate connection durations, upload/download
+traffic and totals. Collection continues without an open browser and completed
+sessions are retained for 90 days. History starts with monitoring; WireGuard does
+not provide exact connect/disconnect events or recoverable past sessions.
+
 ### Firewall
 ![Firewall](screenshots/firewall.png)
 

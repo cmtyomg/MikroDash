@@ -70,6 +70,15 @@ func TestNothingRunsForNoReason(t *testing.T) {
 	}
 }
 
+func TestWireGuardHistoryKeepsOnlyVPNRunningWithoutAViewer(t *testing.T) {
+	s := &Session{holds: map[string]bool{"wireguard": true}}
+	for _, key := range []string{"vpn", "traffic", "ping", "wan", "routing", "logs"} {
+		if got := s.NeededForHolds(key); got != (key == "vpn") {
+			t.Errorf("wireguard hold: %s needed = %v", key, got)
+		}
+	}
+}
+
 // TestApplyReasonsLeavesAViewerAlone.
 //
 // `Needs` says a viewer wants everything, which is about what is ALLOWED to run,

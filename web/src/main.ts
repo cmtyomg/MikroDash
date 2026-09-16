@@ -320,6 +320,7 @@ let activeRouterId = '';
 
 function switchRouter(socket: Socket, id: string): void {
   activeRouterId = id;
+  document.dispatchEvent(new CustomEvent('mikrodash:routerchange', { detail: id }));
   // The mobile select is the other control that says which router this is; the
   // desktop dropdown reads `activeRouterId` through a thunk. Kept in step here,
   // so a switch from anywhere — a nav choice, or a disabled router moving the
@@ -587,7 +588,7 @@ async function main(): Promise<void> {
   initNetwatchPage(socket, pageVisible);
   initDhcpPage(socket, pageVisible);
   initPppPage(socket, pageVisible);
-  initVpnPage(socket, pageVisible);
+  initVpnPage(socket, pageVisible, () => activeRouterId);
   initRosUsersPage(socket, pageVisible);
   initQueuesPage(socket, pageVisible);
   initFirewallPage(socket, pageVisible);

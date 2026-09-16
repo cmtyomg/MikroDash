@@ -126,10 +126,13 @@ type vpnSample struct {
 }
 
 type VPN struct {
-	ros    Reader
-	emit   Emit
-	poll   *pollLoop
-	pollMs *pollInterval
+	// Observations are delivered on every successful peer poll, before UI dedupe.
+	sampleMu sync.Mutex
+	onSample func(time.Time, []routeros.Reply)
+	ros      Reader
+	emit     Emit
+	poll     *pollLoop
+	pollMs   *pollInterval
 	// cache coalesces reads shared with another collector; nil outside a live
 	// session, which is every test. See collect/cache.go.
 	cache *roscache.Cache
@@ -368,9 +371,9 @@ func BuildTunnels(rows []routeros.Reply, prev map[string]vpnSample, now time.Tim
 			next[key] = pr
 		}
 
-		endpoint := p["endpoint-address"]
+		endpoint := p["current-endpoint-address"]
 		if endpoint == "" {
-			endpoint = p["current-endpoint-address"]
+			endpoint = p["endpoint-address"]
 		}
 
 		out = append(out, Tunnel{
@@ -428,12 +431,17 @@ func (v *VPN) orderedPeersLocked() []routeros.Reply {
 // RefreshNow re-reads the peers and emits. This is what a write calls, and what
 // the fixture replay drives.
 func (v *VPN) RefreshNow() {
+	v.sampleMu.Lock()
+	defer v.sampleMu.Unlock()
 	if !v.ros.Connected() {
 		return
 	}
 	rows, err := v.ros.Do(vpnPeersCmd)
 	if err != nil {
 		return
+	}
+	if v.onSample != nil {
+		v.onSample(time.Now(), rows)
 	}
 	v.mu.Lock()
 	clear(v.peers)
@@ -451,6 +459,9 @@ func (v *VPN) RefreshNow() {
 	v.mu.Unlock()
 	v.build()
 }
+
+// SetOnSample must be installed before starting the collector.
+func (v *VPN) SetOnSample(fn func(time.Time, []routeros.Reply)) { v.onSample = fn }
 
 // build assembles and emits, suppressing an unchanged payload.
 func (v *VPN) build() {
@@ -472,7 +483,7 @@ func (v *VPN) build() {
 	// including it would defeat the suppression entirely.
 	var fp strings.Builder
 	for _, t := range tunnels {
-		fp.WriteString(t.Name + "|" + t.State + "|" + strconv.Itoa(t.RX) + "|" + strconv.Itoa(t.TX) +
+		fp.WriteString(t.PublicKey + "|" + t.Interface + "|" + t.Endpoint + "|" + t.Name + "|" + t.State + "|" + strconv.Itoa(t.RX) + "|" + strconv.Itoa(t.TX) +
 			"|" + strconv.FormatFloat(t.RXRate, 'f', 2, 64) +
 			"|" + strconv.FormatFloat(t.TXRate, 'f', 2, 64) + ";")
 	}

@@ -95,9 +95,12 @@ func TestTheAlertFeedIsStartedBecauseAlertingIsOn(t *testing.T) {
 	src := mustRead(t, filepath.Join(repoRoot(t), "internal", "session", "session.go"))
 	flat := strings.Join(strings.Fields(stripGoComments(src)), " ")
 
-	if !strings.Contains(flat, "if s.alertsEnabled { if s.conf().Enabled[\"vpn\"] { s.vpn.Start() }") {
-		t.Error("vpn and routing are no longer started under the alertsEnabled gate, so " +
-			"the alert feed is back to depending on which page somebody opened")
+	// VPN also serves persistent WireGuard history, even with alerting off.
+	if !strings.Contains(flat, "if s.conf().Enabled[\"vpn\"] && (s.alertsEnabled || s.NeededForHolds(\"vpn\")) { s.vpn.Start() }") {
+		t.Error("VPN must start for alerting or history, subject to its collection setting")
+	}
+	if !strings.Contains(flat, "if s.alertsEnabled { if s.conf().Enabled[\"routing\"] { s.routing.Resume() }") {
+		t.Error("routing must still start for alerting")
 	}
 	// And the suspend side, which is the other half: navigating away must not
 	// stop a collector the rules still need.

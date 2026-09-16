@@ -627,6 +627,29 @@ func TestGoldenPayloads(t *testing.T) {
 
 			var want any
 			readJSON(t, g.file, &want)
+			if g.collector == "vpn" {
+				// Deliberate correction for session history: show the authenticated
+				// source IP ahead of the configured endpoint. Keep the frozen Node
+				// recording intact; derive only this changed expectation from the
+				// captured router rows. TestVPNPrefersAuthenticatedSourceIP also
+				// exercises the case without anonymised fixture values.
+				rows, err := newReplayReader(f).Do(vpnPeersCmd)
+				if err != nil {
+					t.Fatal(err)
+				}
+				byKey := map[string]string{}
+				for _, row := range rows {
+					if ip := row["current-endpoint-address"]; ip != "" {
+						byKey[row["public-key"]] = ip
+					}
+				}
+				for _, raw := range want.(map[string]any)["tunnels"].([]any) {
+					row := raw.(map[string]any)
+					if ip := byKey[row["publicKey"].(string)]; ip != "" {
+						row["endpoint"] = ip
+					}
+				}
+			}
 
 			// Recorded additions come out before the comparison, and each one
 			// must actually have been there — see addedSinceNode.

@@ -22,7 +22,7 @@ import (
 // Stamping anything lower would make `Open` refuse the database it had just
 // written; stamping higher than the migrations listed would claim ones that
 // never ran.
-const schemaVersion = 16
+const schemaVersion = 17
 
 // portMigrations are the schema steps this port owns, keyed by the version they
 // take a database TO.
@@ -41,6 +41,7 @@ const schemaVersion = 16
 // whose job is to touch nothing. Same placement, and the same reason, as
 // `RenamePageGrants`.
 var portMigrations = map[int][]string{
+	17: {wireGuardDDL},
 	// 16: the operator's own documents — declared uplinks, pinned cabling, the
 	// Wi-Fi site plan. See internal/db/routerdocs.go.
 	16: {`CREATE TABLE IF NOT EXISTS router_docs (
@@ -92,6 +93,9 @@ func createSchemaIn(h *sql.DB) error {
 	defer func() { _ = tx.Rollback() }() // a no-op once committed
 
 	if _, err := tx.Exec(freshSchemaDDL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(wireGuardDDL); err != nil {
 		return err
 	}
 	now := time.Now().UnixMilli()

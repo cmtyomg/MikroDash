@@ -36,6 +36,31 @@
         </div>
       </div>
 
+      <div class="card" id="vpnSessionsCard">
+        <div class="card-header d-flex align-items-center gap-2 flex-wrap">
+          <h3 class="card-title">WireGuard Session History</h3>
+          <select id="vpnSessionPeer" class="form-select form-select-sm" style="width:auto;max-width:100%" aria-label="Filter sessions by peer"><option value="">All peers</option></select>
+          <button id="vpnSessionsRefresh" class="btn btn-sm btn-outline-secondary" type="button">Refresh</button>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small">Observed sessions · 90-day retention. Duration is approximate: a session ends after 3 minutes without a recent handshake or received traffic. IP changes and monitoring gaps start separate observations. History begins when monitoring starts; earlier traffic cannot be recovered.</p>
+          <p class="text-muted small">Upload/download are from the peer's perspective. Router counters include WireGuard protocol traffic. The end column shows the last observation for active sessions.</p>
+          <div id="vpnSessionsSummary" class="mb-2" aria-live="polite"></div>
+          <div id="vpnSessionsStatus" class="text-muted small" role="status"></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-vcenter mb-0">
+            <thead><tr><th>Peer</th><th>Source IP</th><th>Start</th><th>End / Last seen</th><th>Duration ≈</th><th>Uploaded</th><th>Downloaded</th><th>Total</th><th>Status</th></tr></thead>
+            <tbody id="vpnSessionsBody"><tr><td colspan="9" class="text-muted">Loading session history…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="card-footer d-flex align-items-center gap-2">
+          <button id="vpnSessionsPrev" class="btn btn-sm btn-outline-secondary" type="button" disabled>Previous</button>
+          <span id="vpnSessionsPage" class="text-muted small"></span>
+          <button id="vpnSessionsNext" class="btn btn-sm btn-outline-secondary" type="button" disabled>Next</button>
+        </div>
+      </div>
+
       <!-- PPP sessions (L2TP / PPTP / SSTP / OpenVPN). Hidden unless the router
            actually has sessions, so a WireGuard-only setup is unchanged. -->
       <div class="card" id="vpnPppCard" style="display:none">

@@ -564,8 +564,9 @@ var errNotConnected = notConnected{}
 const DefaultIdleGrace = 2 * time.Minute
 
 type Manager struct {
-	store *store.Store
-	h     *hub.Hub
+	vpnSample func(string, time.Time, []routeros.Reply)
+	store     *store.Store
+	h         *hub.Hub
 
 	mu   sync.Mutex
 	live map[string]*Session
@@ -642,6 +643,9 @@ func (m *Manager) SetAlertSink(fn func(routerID, routerLabel string, fired []ale
 // SetHistoryWire installs the history recorder. Nil, or a wire built with
 // `enabled` false, records nothing.
 func (m *Manager) SetHistoryWire(w *historywire.Wire) { m.history = w }
+
+// SetVPNSample installs persistent observation recording before sessions start.
+func (m *Manager) SetVPNSample(fn func(string, time.Time, []routeros.Reply)) { m.vpnSample = fn }
 
 // SetOnIdentity attaches the writer for what a router reports about ITSELF:
 // model, serial, and the RouterOS version, which changes on every upgrade.
@@ -974,6 +978,9 @@ func (m *Manager) Acquire(routerID string) (*Session, error) {
 	// between byte counters, so the interval IS the measurement window.
 	s.ppp = collect.NewPPP(reader{s}, emit, s.conf().Poll["ppp"])
 	s.vpn = collect.NewVPN(reader{s}, emit, s.conf().Poll["vpn"])
+	if record := m.vpnSample; record != nil {
+		s.vpn.SetOnSample(func(at time.Time, rows []routeros.Reply) { record(s.RouterID, at, rows) })
+	}
 	// NOT suspended by page focus, because it has no page: the Dashboard card it
 	// feeds is visible whenever anyone is looking at the router at all. The idle
 	// gate in Manager.Release still stops it when the last viewer leaves.
@@ -1929,10 +1936,10 @@ func (s *Session) connectLoop() {
 			// it too, so a router with alerting OFF pays nothing: this is the
 			// same work the alert pool does for such a router today, moved to the
 			// session that was already doing the other four.
+			if s.conf().Enabled["vpn"] && (s.alertsEnabled || s.NeededForHolds("vpn")) {
+				s.vpn.Start()
+			}
 			if s.alertsEnabled {
-				if s.conf().Enabled["vpn"] {
-					s.vpn.Start()
-				}
 				if s.conf().Enabled["routing"] {
 					// Resume, not Start:  has no Start -- it is a
 					// page-gated collector whose lifecycle begins at focus.
