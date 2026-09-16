@@ -1,4 +1,4 @@
-name: Build & Publish Docker Image
+﻿name: Build & Publish Docker Image
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Must be lowercase — Docker registry names are case-sensitive
+  # Must be lowercase вЂ” Docker registry names are case-sensitive
   IMAGE_NAME: cmtyomg/mikrodash
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
       #
       # linux/arm/v7 IS BACK as of v0.8.0. It was dropped at the Node 24 move
       # because node:24-alpine published no 32-bit ARM variant (amd64, arm64/v8
-      # and s390x only), which stranded ARMv7 users on 0.5.54 — and restoring it
+      # and s390x only), which stranded ARMv7 users on 0.5.54 вЂ” and restoring it
       # was one of the stated motives for the Go rewrite. The runtime is now
       # alpine with a CGO_ENABLED=0 static binary, and Go cross-compiles, so the
       # constraint that removed it no longer exists.
@@ -50,6 +50,7 @@ jobs:
 
       # Main publishes latest and a commit tag so this fork can be installed
       # directly from GHCR. Version tags additionally publish semver aliases.
+      # Force rebuild: 2026-09-16
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
@@ -92,11 +93,11 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           # Extract description from the CHANGELOG header line, e.g. "CAPsMAN support, ..."
           # Separator-tolerant on purpose: entries up to 0.7.33 use an em dash, 0.7.34 onward use a
-          # plain hyphen because em dashes are not wanted in anything user-facing. A hard-coded " — "
+          # plain hyphen because em dashes are not wanted in anything user-facing. A hard-coded " вЂ” "
           # here would silently yield an empty description for every future release, and the release
           # would publish with no title rather than fail.
           DESCRIPTION=$(grep "^## \[${VERSION}\]" CHANGELOG.md | head -1 \
-            | sed -E "s/^## \[${VERSION}\][[:space:]]*[—–:-][[:space:]]*//")
+            | sed -E "s/^## \[${VERSION}\][[:space:]]*[вЂ”вЂ“:-][[:space:]]*//")
           # Build release notes: description as a heading, then the section body
           {
             [ -n "$DESCRIPTION" ] && printf '## %s\n\n' "$DESCRIPTION"
@@ -110,3 +111,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file release_notes.md
+
