@@ -1,3 +1,5 @@
+version: "3.8"
+
 name: mikrodash
 
 services:
@@ -5,7 +7,10 @@ services:
     image: ghcr.io/cmtyomg/mikrodash:latest
     container_name: MikroDash
     ports:
-      - "3081:3081"
+      - target: 3081
+        published: "3081"
+        protocol: tcp
+        mode: host
     volumes:
       - data:/data
     restart: unless-stopped
@@ -24,6 +29,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - mikrodash-net
+
+networks:
+  mikrodash-net:
+    driver: bridge
 
 volumes:
   data:
